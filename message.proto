@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package bimux;
+
+enum Flag {
+    request = 0; 
+    response = 1; 
+    oneway = 2;
+};
+
+message Message {
+    uint64 number = 1;
+    Flag flag = 2;
+
+    int32 route = 3;
+    bytes data = 4;
+}
+
+//protoc --go_out=. ./message.proto
