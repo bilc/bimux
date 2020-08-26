@@ -18,6 +18,13 @@ var ErrTimeout error = errors.New("timeout")
 type Muxer interface {
 	Send(route int32, data []byte) error
 	Rpc(route int32, req []byte, timeout time.Duration) (rsp []byte, err error)
+	SetID(id string)
+	GetID() string
+
+	//raw read and write
+	ReadPacket() (data []byte, err error)
+	WritePacket(data []byte) error
+
 	Wait() error
 	Close()
 }
@@ -25,7 +32,9 @@ type Muxer interface {
 // mockgen -source=./mux.go -destination=mux_mock.go -package=bimux
 
 type muxer struct {
-	conn       Connection
+        Connection
+	id string
+
 	writeMutex sync.Mutex
 	readMutex  sync.Mutex
 
@@ -46,7 +55,7 @@ type muxer struct {
 
 func newMuxer(conn Connection, rpcServeHook RpcServeFunc, onewayServeHook OnewayFunc, closeHook CloseFunc) (Muxer, error) {
 	m := &muxer{
-		conn:      conn,
+		Connection:      conn,
 		callerRsp: make(map[uint64]chan *Message),
 
 		rpcServeHook:    rpcServeHook,
@@ -58,6 +67,14 @@ func newMuxer(conn Connection, rpcServeHook RpcServeFunc, onewayServeHook Oneway
 	go m.loop()
 
 	return m, nil
+}
+
+func (m *muxer) SetID(id string) {
+	m.id = id
+}
+
+func (m *muxer) GetID() string{
+	return m.id
 }
 
 /*
@@ -95,13 +112,13 @@ func (m *muxer) Wait() error {
 
 func (m *muxer) Close() {
 	m.isClose = true
-	m.conn.Close()
+	m.Connection.Close()
 }
 
 func (m *muxer) readMsg() (*Message, error) {
 	m.readMutex.Lock()
 	defer m.readMutex.Unlock()
-	pack, err := m.conn.ReadPacket()
+	pack, err := m.Connection.ReadPacket()
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +152,7 @@ func (m *muxer) writeMsg(msg *Message) error {
 	if err != nil {
 		return err
 	}
-	err = m.conn.WritePacket(b)
+	err = m.Connection.WritePacket(b)
 	return err
 }
 

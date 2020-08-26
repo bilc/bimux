@@ -20,25 +20,43 @@
 bimux是为解决上面问题而产生的
 
 # 使用说明
-创建api
-``` 
-func NewWebSocketMuxer(
-	w http.ResponseWriter,
-	r *http.Request,
-	rpcServeHook RpcServeFunc,
-	onewayServeHook OnewayFunc,
-) (Muxer, error) {
-
-func Dial(
-	addr string,
-	rpcServeHook RpcServeFunc,
-	onewayServeHook OnewayFunc,
-	stopHook StopFunc,
-) (Muxer, error) {
+muxer 一个可以被复用的连接  
 ```
+type Muxer interface {
+	Send(route int32, data []byte) error
+	Rpc(route int32, req []byte, timeout time.Duration) (rsp []byte, err error)
+	SetID(id string)
+	GetID() string
+
+	//raw read and write
+	ReadPacket() (data []byte, err error)
+	WritePacket(data []byte) error
+
+	Wait() error
+	Close()
+}
+```
+
+基于websockert的server与client实现,
+当连接建立后，server与client的身份就不在固定。其中的参数的回调函数，是它作为被访问方时的处理函数 
+``` 
+func WsServe(addr, uri string,
+	connections chan Muxer,
+	rpcServeHook RpcServeFunc,
+	onewayServeHook OnewayFunc,
+	closeHook CloseFunc,
+)  error
+
+func WsDial(addr, uri string,
+	rpcServeHook RpcServeFunc,
+	onewayServeHook OnewayFunc,
+	closeHook CloseFunc,
+) (Muxer, error)
+
+```
+
 回调函数及定义  
 参数 route：调用者用来区分不同的数据类型进行处理。在通信两端route值不能重复。  
-参数 muxer：用于函数内部需要识别连接本身。  
 ```
 rpcServeHook RpcServeFunc,
 onewayServeHook OnewayFunc,
@@ -47,12 +65,6 @@ stopHook StopFunc,
 type RpcServeFunc func(route int32, req []byte, m Muxer) []byte
 type OnewayFunc func(route int32, req []byte, m Muxer)
 type CloseFunc func(Muxer)
-```
-
-请求api
-```
-Send(route int32, data []byte) error
-Rpc(route int32, req []byte, timeout time.Duration) (rsp []byte, err error)
 ```
 
 # 内部实现
@@ -155,3 +167,8 @@ Details (average, fastest, slowest):
 Status code distribution:
   [200]	1000000 responses
 ```
+
+
+# 测试
+GO111MODULE=on go get github.com/golang/mock/mockgen@v1.4.3
+mockgen -source conn.go  -package bimux -destination conn_mock.go

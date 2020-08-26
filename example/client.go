@@ -1,35 +1,26 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"net/http"
-	"net/url"
-	//	"sync/atomic"
 	"time"
+	"fmt"
+	"flag"
+	//	"sync/atomic"
 
-	".."
+	"github.com/bilc/bimux"
 )
 
-var addr = flag.String("addr", "localhost:18080", "http service address")
 
-//var count int64 = 0
+
+func RpcServe(route int32 , req []byte, m bimux.Muxer) []byte{
+		fmt.Println("hello",route, string(req))
+		return append(req, []byte("-reverse call OK-")...)
+}
 
 func main() {
 	flag.Parse()
 
-	u := url.URL{Scheme: "ws", Host: *addr, Path: "/mux"}
-	mux, _ := bimux.Dial(u.String(), nil, nil, nil)
+	conn,_ := bimux.WsDial("localhost:18080", "/mux", RpcServe, nil ,nil)
+	time.Sleep(time.Second*10)
+	conn.Close()
 
-	http.HandleFunc("/mux", func(w http.ResponseWriter, r *http.Request) {
-		//atomic.AddInt64(&count, 1)
-		ret, err := mux.Rpc(1, nil, time.Second)
-		if err == nil {
-			w.Write(ret)
-		} else {
-			w.WriteHeader(505)
-			w.Write([]byte(err.Error()))
-		}
-	})
-	fmt.Println(http.ListenAndServe("127.0.0.1:12000", nil))
 }

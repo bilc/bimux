@@ -1,28 +1,22 @@
 package main
 
 import (
-	"flag"
+	"time"
 	"fmt"
-	"net/http"
-
 	_ "net/http/pprof"
 
-	".."
+	"github.com/bilc/bimux"
 )
 
-var addr = flag.String("addr", "0.0.0.0:18080", "http service address")
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	muxer, _ := bimux.NewWebSocketMuxer(w, r,
-		func(route int32, req []byte, m bimux.Muxer) []byte {
-			return []byte("helloworld")
-		}, nil)
-
-	fmt.Println("server conn over ", muxer.Wait())
-}
 
 func main() {
-	flag.Parse()
-	http.HandleFunc("/mux", handler)
-	fmt.Println(http.ListenAndServe(*addr, nil))
+
+	connChan := make(chan bimux.Muxer, 10)
+	go func() {
+		for i := range connChan {
+			ret,err :=i.Rpc(111, []byte("test"), time.Second)
+			fmt.Println(string(ret), err)
+		}
+	} ()
+	bimux.WsServe("0.0.0.0:18080", "/mux", connChan, nil , nil, nil)
 }

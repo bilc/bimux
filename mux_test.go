@@ -31,7 +31,7 @@ func TestReadMsg(t *testing.T) {
 	conn.EXPECT().ReadPacket().Return(b, nil)
 
 	m := new(muxer)
-	m.conn = conn
+	m.Connection = conn
 	ret, err := m.readMsg()
 	assert.Equal(t, msg.Number, ret.Number)
 	assert.Equal(t, err, nil)
@@ -75,6 +75,7 @@ func TestWSRpc(t *testing.T) {
 	go func() {
 		fmt.Println(http.ListenAndServe("127.0.0.1:12000", nil))
 	}()
+
 	time.Sleep(time.Second)
 	m, err := Dial("ws://127.0.0.1:12000/mux", nil, nil, nil)
 	assert.Nil(t, err)

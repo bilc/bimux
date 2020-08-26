@@ -5,6 +5,7 @@ websocket implement
 */
 
 import (
+	"net/url"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -36,30 +37,33 @@ func (c *wsConn) WritePacket(data []byte) error {
 */
 var upgrader = websocket.Upgrader{} // use default options
 
-func NewWebSocketMuxer(
-	w http.ResponseWriter,
-	r *http.Request,
-	rpcServeHook RpcServeFunc,
-	onewayServeHook OnewayFunc,
-) (Muxer, error) {
-	c, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return nil, err
-	}
 
-	return newMuxer(newWSConn(c), rpcServeHook, onewayServeHook, nil)
-}
-
-/*
- Connection with websocket addr(client)
-*/
-func Dial(
-	addr string,
+func WsServe(addr, uri string,
+	connections chan Muxer,
 	rpcServeHook RpcServeFunc,
 	onewayServeHook OnewayFunc,
 	closeHook CloseFunc,
-) (Muxer, error) {
-	c, _, err := websocket.DefaultDialer.Dial(addr, nil)
+)  error{
+	
+	http.HandleFunc(uri, func(w http.ResponseWriter, r *http.Request) {
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			return 
+		}
+		muxer, _ := newMuxer(newWSConn(c), rpcServeHook, onewayServeHook, nil)
+		connections <- muxer
+	} )
+	return http.ListenAndServe(addr, nil)
+}
+
+func WsDial(addr, uri string,
+	rpcServeHook RpcServeFunc,
+	onewayServeHook OnewayFunc,
+	closeHook CloseFunc,
+) (Muxer, error){
+	
+	u := url.URL{Scheme: "ws", Host: addr, Path: uri}
+	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		return nil, err
 	}
