@@ -170,5 +170,7 @@ Status code distribution:
 
 
 # 测试
+```
 GO111MODULE=on go get github.com/golang/mock/mockgen@v1.4.3
 mockgen -source conn.go  -package bimux -destination conn_mock.go
+```
